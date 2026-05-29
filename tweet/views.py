@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from .models import Tweet
-from .forms import TweetForm
+from .forms import TweetForm, UserRegistrationForm, SearchForm
 from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
 
 # Create your views here.
 def index(req):
@@ -12,6 +14,7 @@ def tweet_list(req):
 
     return render(req, 'tweet_list.html', {'tweets': tweets})
 
+@login_required
 def tweet_create(req):
     if req.method == 'POST':
         form = TweetForm(req.POST, req.FILES)
@@ -27,6 +30,7 @@ def tweet_create(req):
 
     return render(req, 'tweet_form.html', {'form': form})
 
+@login_required
 def tweet_edit(req, tweet_id):
     tweet = get_object_or_404(Tweet, pk=tweet_id, user = req.user)
     if req.method == 'POST':
@@ -43,6 +47,7 @@ def tweet_edit(req, tweet_id):
 
     return render(req, 'tweet_form.html', {'form': form})
 
+@login_required
 def tweet_delete(req, tweet_id):
     tweet = get_object_or_404(Tweet, pk=tweet_id, user = req.user)
 
@@ -52,3 +57,31 @@ def tweet_delete(req, tweet_id):
         return redirect('tweet_list')
     
     return render(req, 'tweet_confirm_delete.html', {'tweet': tweet})
+
+def search(req):
+    keyword = None
+    if req.method == 'GET':
+        form = SearchForm(req.GET)
+
+        if form.is_valid():
+            keyword = form.cleaned_data['text']
+    else:
+        form = SearchForm()
+
+    return render(req, 'tweet_list.html', {'keyword': keyword})
+
+def register(req):
+    if req.method == 'POST':
+        form = UserRegistrationForm(req.POST)
+
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+            login(req, user)
+
+            return redirect('tweet_list')
+    else:
+        form = UserRegistrationForm()
+
+    return render(req, 'registration/register.html', {'form': form})
